@@ -69,8 +69,8 @@ dependencies:
 - dep_id: dep_6z06zktgfe2qxv
   resolution_hints: {app_id: C6ZZPAPN4YYF5NVJ, name: Anvil Extras, package_name: anvil_extras}
   version: {version_tag: v3.5.0}
-metadata: {title: Anchurus2 v054}
-name: Clone of ANC2_v054 (2)
+metadata: {description: ANII_R2_test_tb_v0.1, title: ANII_R2_test_tb}
+name: ANII_R2_test_tb
 native_deps:
   head_html: |-
     <script>
