@@ -31,7 +31,7 @@ import anvil.google.auth, anvil.google.drive, anvil.google.mail
 from anvil.google.drive import app_files
 import anvil.media
 import anvil.pdf
-from anvil.pdf import PdfRenderer
+from anvil.pdf import PDFRenderer
 from anvil.tables import app_tables
 
 ############# Defining all the Functions #############
@@ -280,7 +280,7 @@ def create_csv(data_list):
 
 @anvil.server.callable
 def print_form(form,site_id,table_name,action,data_list,page_info):
-  # 1. Call PdfRenderer
+  # 1. Call PDFRenderer
   # - set name of exported csv file
   # - set page orientation and size
   # ****** Add more variables for user to select (quality, scale, margins) as well as landscape and paper size)
@@ -289,7 +289,7 @@ def print_form(form,site_id,table_name,action,data_list,page_info):
   #print("In print form")
   #print(site_id, table_name, action)
   #print(data_list)
-  pdf_form = PdfRenderer(filename='Anchurus_list_form.pdf',landscape=True,page_size='A3').render_form(form,site_id,table_name,data_list,action,page_info)
+  pdf_form = PDFRenderer(filename='Anchurus_list_form.pdf',landscape=True,page_size='A3').render_form(form,site_id,table_name,data_list,action,page_info)
   return pdf_form
 
 @anvil.server.callable
@@ -1054,19 +1054,8 @@ def import_file(type,file):
       ret_msg = "Error reading import file for table " + type + "\n"
     return ret_msg
 
-
-#----------------------------------------------------------------------------------------#
-# The folling line has to be commented out / removed when deploying this as server code
-# using the Anvil-app-server it connects direct to the Client
-#----------------------------------------------------------------------------------------#
-
-#anvil.server.connect("server_HGRHEN6VHS3TZUER3QF6XVSG-RSU3U7R2ORMFMQUN")
-
-#
-#
-#
-
 # Functions to handle log file compression
+
 def namer(name):
     return name + ".gz"
 
@@ -1075,6 +1064,8 @@ def rotator(source, dest):
         with gzip.open(dest, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
     os.remove(source)
+
+# logmsg function
 
 def logmsg(level,message):
   # This function adds the Anvil session_id to the log message and logs the message to the log file with the specified log level
@@ -1094,6 +1085,13 @@ def logmsg(level,message):
 # This is the start of the server code execution; the following lines are executed at
 # startup of the server and before any calls from the client are processed
 #----------------------------------------------------------------------------------------#
+
+#----------------------------------------------------------------------------------------#
+# The folling line has to be commented out / removed when deploying this as server code
+# using the Anvil-app-server it connects direct to the Client
+#----------------------------------------------------------------------------------------#
+
+#anvil.server.connect("server_HGRHEN6VHS3TZUER3QF6XVSG-RSU3U7R2ORMFMQUN")
 
 # setup logging 
 # 1. Stop console logging (stdout/stderr)
@@ -1180,6 +1178,11 @@ except pymysql.Error as err:
 # as admin_user in the Anvil user table. 
 # This is only run at startup and will ensure there is always one enabled admin user
 #
+# First check it users table has the extra columns (initials, firstname, lastname, systemrole) added for the
+# admin user management; if not then add these columns
+
+cols = app_tables.users.list_columns()
+logmsg('INFO',"Columns in users table: " + str(cols))  
 
 admin_users = app_tables.users.search(systemrole = "System Administrator", enabled = True)
 if len(admin_users) > 0:
