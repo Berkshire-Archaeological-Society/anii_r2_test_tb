@@ -82,7 +82,7 @@ services:
   server_config: {}
   source: /runtime/services/google.yml
 - client_config: {}
-  server_config: {custom_smtp: true}
+  server_config: {custom_smtp: true, smtp_encryption: starttls, smtp_host: smtp-relay.gmail.com, smtp_password: +haqQbASOmrtsuNiydZqzxhT8jhvyZmUWPeDYGtc/sCMN4jJ7jp1bHrBRAEByv+9MrSEUOQxwkIgfzWr/6fdfRL7bvsdUM8T0+QcV5S6IG48+YRbpjXYMS6zc3vadG0o3fsXWcpktd52/cpqnPZUEsQkd6RluWRnGIpfOUvQq+ar4g6ErMuDORo=, smtp_port: 465, smtp_user: mail-server@berksarch.co.uk}
   source: /runtime/services/anvil/email.yml
 startup: {module: Main, type: form}
 startup_form: null
