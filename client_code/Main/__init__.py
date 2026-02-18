@@ -26,7 +26,11 @@ class Main(MainTemplate):
     # Any code you write here will run before the form opens.
     
     # get client variable settings from server configuration file
-    globals_from_config = anvil.server.call("client_globals")
+    try:
+      globals_from_config = anvil.server.call("client_globals")
+    except anvil.server.AppOfflineError:
+      alert("The server is offline")
+      
     Global.rows_per_page = globals_from_config["rows_per_page"]
     Global.version = globals_from_config["client_version"]
     Global.admin_domain = globals_from_config["admin_domain"]

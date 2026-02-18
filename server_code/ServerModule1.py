@@ -1120,10 +1120,10 @@ root_logger.addHandler(file_handler)
 
 logmsg("INFO","--------------------------")
 logmsg("INFO","Anchurus-II server started")
-logmsg("WARNING","This is a warning message")
-logmsg("ERROR","This is an error message")
-logmsg("DEBUG","This is a debug message")
-logmsg("CRITICAL","This is a critical message")
+#logmsg("WARNING","This is a warning message")
+#logmsg("ERROR","This is an error message")
+#logmsg("DEBUG","This is a debug message")
+#logmsg("CRITICAL","This is a critical message")
  
 
 
@@ -1181,8 +1181,8 @@ except pymysql.Error as err:
 # First check it users table has the extra columns (initials, firstname, lastname, systemrole) added for the
 # admin user management; if not then add these columns
 
-cols = app_tables.users.list_columns()
-logmsg('INFO',"Columns in users table: " + str(cols))  
+#cols = app_tables.users.list_columns()
+#logmsg('INFO',"Columns in users table: " + str(cols))  
 
 admin_users = app_tables.users.search(systemrole = "System Administrator", enabled = True)
 if len(admin_users) > 0:
