@@ -34,6 +34,148 @@ import anvil.pdf
 from anvil.pdf import PDFRenderer
 from anvil.tables import app_tables
 
+
+#----------------------------------------------------------------------------------------#
+# This is the start of the server code execution; the following lines are executed at
+# startup of the server and before any calls from the client are processed
+#----------------------------------------------------------------------------------------#
+
+#----------------------------------------------------------------------------------------#
+# The folling line has to be commented out / removed when deploying this as server code
+# using the Anvil-app-server it connects direct to the Client
+#----------------------------------------------------------------------------------------#
+
+#anvil.server.connect("server_HGRHEN6VHS3TZUER3QF6XVSG-RSU3U7R2ORMFMQUN")
+
+# setup logging 
+# 1. Stop console logging (stdout/stderr)
+logging.basicConfig(level=logging.DEBUG,handlers=[])
+# handlers=[] : This prevents logging from being sent to the default stderr handler; 
+# instead we will use a TimedRotatingFileHandler to write logs to file with rotation at midnight and keep 7 days of logs
+
+root_logger = logging.getLogger('')
+# 2. Setup TimedRotatingFileHandler with backupCount
+file_handler = TimedRotatingFileHandler(
+  filename='ANII-R2-server.log', 
+  when='midnight', 
+  interval=1, 
+)
+# 3. Attach the compression functions to the handler so that when the log file is rotated at midnight, the old log file is compressed and saved with a .gz extension
+file_handler.namer = namer
+file_handler.rotator = rotator
+# 4. Set format and add to logger
+formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+file_handler.setFormatter(formatter)
+root_logger.addHandler(file_handler)
+
+root_logger.addHandler(file_handler)
+
+# log startup message
+
+logmsg("INFO","--------------------------")
+logmsg("INFO","Anchurus-II server started")
+#logmsg("WARNING","This is a warning message")
+#logmsg("ERROR","This is an error message")
+#logmsg("DEBUG","This is a debug message")
+#logmsg("CRITICAL","This is a critical message")
+
+
+
+#users_table = app_tables.users
+
+user_list = app_tables.users.search(tables.order_by("email"))
+
+# Reading Configuration file
+config = configparser.ConfigParser()
+config.read('anchurus2.cfg')
+
+database_connect_info = {}
+database_connect_info["host"] =  config.get("database","host",fallback="localhost")
+database_connect_info["port"] =  config.get("database","port",fallback="3306")
+database_connect_info["user"] =  config.get("database","user",fallback="root")
+database_connect_info["password"] =  config.get("database","password",fallback="toor")
+database_connect_info["db"] =  config.get("database","db",fallback="mydb")
+database_connect_info["special_finds_table_prefix"] =  config.get("database","special_finds_table_prefix")
+
+users_info = {}
+users_info["admin_domain"] = config.get("users","admin_domain")
+users_info["admin_user"] = config.get("users","admin_user")
+users_info["admin_pw"] = config.get("users","admin_pw")
+users_info["admin_firstname"] = config.get("users","admin_firstname")
+users_info["admin_lastname"] = config.get("users","admin_lastname")
+users_info["admin_user_initials"] = config.get("users","admin_user_initials")
+
+client_info = {}
+client_info["rows_per_page"] = config.get("client","rows_per_page",fallback="20")
+client_info["version"] = config.get("default","version")
+client_info["organisation"] = config.get("client","organisation")
+
+client_info.update(users_info)
+
+#logmsg("INFO",client_info)
+
+# connect to database
+try:
+  conn = pymysql.connect(host=database_connect_info["host"],
+                         port=int(database_connect_info["port"]),
+                         user=database_connect_info["user"],
+                         password=database_connect_info["password"],
+                         db=database_connect_info["db"],
+                         cursorclass=pymysql.cursors.DictCursor)
+  msg = "Successfully connected to database: " + database_connect_info["db"]
+  logmsg('INFO',msg)
+except pymysql.Error as err:
+  logmsg("ERROR",format(err))
+
+#
+# Check if an enabled admin_user is in Anvil users table; if not then create a new user (as defined in the configuration file)
+# as admin_user in the Anvil user table. 
+# This is only run at startup and will ensure there is always one enabled admin user
+#
+# First check it users table has the extra columns (initials, firstname, lastname, systemrole) added for the
+# admin user management; if not then add these columns
+
+#cols = app_tables.users.list_columns()
+#logmsg('INFO',"Columns in users table: " + str(cols))  
+
+admin_users = app_tables.users.search(systemrole = "System Administrator", enabled = True)
+if len(admin_users) > 0:
+  for user_row in admin_users:
+    msg = "Found System Administrator user: " + user_row["email"]
+else:
+  # No enabled System Administrators found
+  #
+  # check if users_info["admin_user"] exists:
+  admin_users = app_tables.users.search(email=users_info["admin_user"])
+  if len(admin_users) > 0:
+    # user exists but is not System Administrator or could be disabled; so force update this user to be an enabled System Administrator
+    msg = system_user_update(users_info["admin_user"],
+                             "System Administrator",
+                             True,
+                             users_info["admin_user_initials"],
+                             users_info["admin_firstname"],
+                             users_info["admin_lastname"]
+                            )
+  else:
+    # create new System Administrator user
+    msg = system_user_insert(users_info["admin_user"],
+                             users_info["admin_pw"],
+                             "System Administrator",
+                             True,
+                             users_info["admin_user_initials"],
+                             users_info["admin_firstname"],
+                             users_info["admin_lastname"]
+                            )
+    anvil.email.send(from_name = "My App Support", 
+                     to = users_info["admin_user"],
+                     subject = "Welcome",
+                     text = "Hi, your email address has been configured as System Administrator in the BAS Anvil Web Application.")
+logmsg('INFO',msg)
+
+
+
+
+
 ############# Defining all the Functions #############
 
 # ---------------------------------------
@@ -1080,143 +1222,6 @@ def logmsg(level,message):
   elif level == "CRITICAL":
     logging.critical("%s | %s",anvil.server.get_session_id(),message)
   return
-
-#----------------------------------------------------------------------------------------#
-# This is the start of the server code execution; the following lines are executed at
-# startup of the server and before any calls from the client are processed
-#----------------------------------------------------------------------------------------#
-
-#----------------------------------------------------------------------------------------#
-# The folling line has to be commented out / removed when deploying this as server code
-# using the Anvil-app-server it connects direct to the Client
-#----------------------------------------------------------------------------------------#
-
-#anvil.server.connect("server_HGRHEN6VHS3TZUER3QF6XVSG-RSU3U7R2ORMFMQUN")
-
-# setup logging 
-# 1. Stop console logging (stdout/stderr)
-logging.basicConfig(level=logging.DEBUG,handlers=[])
-                    # handlers=[] : This prevents logging from being sent to the default stderr handler; 
-                    # instead we will use a TimedRotatingFileHandler to write logs to file with rotation at midnight and keep 7 days of logs
-
-root_logger = logging.getLogger('')
-# 2. Setup TimedRotatingFileHandler with backupCount
-file_handler = TimedRotatingFileHandler(
-    filename='ANII-R2-server.log', 
-    when='midnight', 
-    interval=1, 
-)
-# 3. Attach the compression functions to the handler so that when the log file is rotated at midnight, the old log file is compressed and saved with a .gz extension
-file_handler.namer = namer
-file_handler.rotator = rotator
-# 4. Set format and add to logger
-formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
-file_handler.setFormatter(formatter)
-root_logger.addHandler(file_handler)
-
-root_logger.addHandler(file_handler)
-
-# log startup message
-
-logmsg("INFO","--------------------------")
-logmsg("INFO","Anchurus-II server started")
-#logmsg("WARNING","This is a warning message")
-#logmsg("ERROR","This is an error message")
-#logmsg("DEBUG","This is a debug message")
-#logmsg("CRITICAL","This is a critical message")
- 
-
-
-#users_table = app_tables.users
-
-user_list = app_tables.users.search(tables.order_by("email"))
-
-# Reading Configuration file
-config = configparser.ConfigParser()
-config.read('anchurus2.cfg')
-
-database_connect_info = {}
-database_connect_info["host"] =  config.get("database","host",fallback="localhost")
-database_connect_info["port"] =  config.get("database","port",fallback="3306")
-database_connect_info["user"] =  config.get("database","user",fallback="root")
-database_connect_info["password"] =  config.get("database","password",fallback="toor")
-database_connect_info["db"] =  config.get("database","db",fallback="mydb")
-database_connect_info["special_finds_table_prefix"] =  config.get("database","special_finds_table_prefix")
-
-users_info = {}
-users_info["admin_domain"] = config.get("users","admin_domain")
-users_info["admin_user"] = config.get("users","admin_user")
-users_info["admin_pw"] = config.get("users","admin_pw")
-users_info["admin_firstname"] = config.get("users","admin_firstname")
-users_info["admin_lastname"] = config.get("users","admin_lastname")
-users_info["admin_user_initials"] = config.get("users","admin_user_initials")
-
-client_info = {}
-client_info["rows_per_page"] = config.get("client","rows_per_page",fallback="20")
-client_info["version"] = config.get("default","version")
-client_info["organisation"] = config.get("client","organisation")
-
-client_info.update(users_info)
-
-#logmsg("INFO",client_info)
-
-# connect to database
-try:
-  conn = pymysql.connect(host=database_connect_info["host"],
-                               port=int(database_connect_info["port"]),
-                               user=database_connect_info["user"],
-                               password=database_connect_info["password"],
-                               db=database_connect_info["db"],
-                               cursorclass=pymysql.cursors.DictCursor)
-  msg = "Successfully connected to database: " + database_connect_info["db"]
-  logmsg('INFO',msg)
-except pymysql.Error as err:
-  logmsg("ERROR",format(err))
-
-#
-# Check if an enabled admin_user is in Anvil users table; if not then create a new user (as defined in the configuration file)
-# as admin_user in the Anvil user table. 
-# This is only run at startup and will ensure there is always one enabled admin user
-#
-# First check it users table has the extra columns (initials, firstname, lastname, systemrole) added for the
-# admin user management; if not then add these columns
-
-#cols = app_tables.users.list_columns()
-#logmsg('INFO',"Columns in users table: " + str(cols))  
-
-admin_users = app_tables.users.search(systemrole = "System Administrator", enabled = True)
-if len(admin_users) > 0:
-  for user_row in admin_users:
-    msg = "Found System Administrator user: " + user_row["email"]
-else:
-  # No enabled System Administrators found
-  #
-  # check if users_info["admin_user"] exists:
-  admin_users = app_tables.users.search(email=users_info["admin_user"])
-  if len(admin_users) > 0:
-    # user exists but is not System Administrator or could be disabled; so force update this user to be an enabled System Administrator
-    msg = system_user_update(users_info["admin_user"],
-                                   "System Administrator",
-                                   True,
-                                   users_info["admin_user_initials"],
-                                   users_info["admin_firstname"],
-                                   users_info["admin_lastname"]
-                                  )
-  else:
-    # create new System Administrator user
-    msg = system_user_insert(users_info["admin_user"],
-                                 users_info["admin_pw"],
-                                 "System Administrator",
-                                 True,
-                                 users_info["admin_user_initials"],
-                                 users_info["admin_firstname"],
-                                 users_info["admin_lastname"]
-                                )
-    anvil.email.send(from_name = "My App Support", 
-                     to = users_info["admin_user"],
-                     subject = "Welcome",
-                     text = "Hi, your email address has been configured as System Administrator in the BAS Anvil Web Application.")
-logmsg('INFO',msg)
 
 #---------------------------------------------------------------------------------------#
 # The folling line has to be commented out / removed when deploying this as server code
