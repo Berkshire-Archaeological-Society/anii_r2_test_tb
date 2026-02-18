@@ -1212,6 +1212,10 @@ else:
                                  users_info["admin_firstname"],
                                  users_info["admin_lastname"]
                                 )
+    anvil.email.send(from_name = "My App Support", 
+                     to = users_info["admin_user"],
+                     subject = "Welcome",
+                     text = "Hi, your email address has been configured as System Administrator in the BAS Anvil Web Application.")
 logmsg('INFO',msg)
 
 #---------------------------------------------------------------------------------------#
