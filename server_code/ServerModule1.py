@@ -47,6 +47,35 @@ from anvil.tables import app_tables
 
 #anvil.server.connect("server_HGRHEN6VHS3TZUER3QF6XVSG-RSU3U7R2ORMFMQUN")
 
+# Functions to handle log file compression
+
+def namer(name):
+  return name + ".gz"
+
+def rotator(source, dest):
+  with open(source, 'rb') as f_in:
+    with gzip.open(dest, 'wb') as f_out:
+      shutil.copyfileobj(f_in, f_out)
+  os.remove(source)
+
+# logmsg function
+
+def logmsg(level,message):
+  # This function adds the Anvil session_id to the log message and logs the message to the log file with the specified log level
+  if level == "INFO":
+    logging.info("%s | %s",anvil.server.get_session_id(),message)
+  elif level == "ERROR":
+    logging.error("%s | %s",anvil.server.get_session_id(),message)
+  elif level == "DEBUG":
+    logging.debug("%s | %s",anvil.server.get_session_id(),message)
+  elif level == "WARNING":
+    logging.warning("%s | %s",anvil.server.get_session_id(),message)
+  elif level == "CRITICAL":
+    logging.critical("%s | %s",anvil.server.get_session_id(),message)
+  return
+
+##################################
+
 # setup logging 
 # 1. Stop console logging (stdout/stderr)
 logging.basicConfig(level=logging.DEBUG,handlers=[])
@@ -111,8 +140,6 @@ client_info["version"] = config.get("default","version")
 client_info["organisation"] = config.get("client","organisation")
 
 client_info.update(users_info)
-
-#logmsg("INFO",client_info)
 
 # connect to database
 try:
@@ -1196,32 +1223,6 @@ def import_file(type,file):
       ret_msg = "Error reading import file for table " + type + "\n"
     return ret_msg
 
-# Functions to handle log file compression
-
-def namer(name):
-    return name + ".gz"
-
-def rotator(source, dest):
-    with open(source, 'rb') as f_in:
-        with gzip.open(dest, 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
-    os.remove(source)
-
-# logmsg function
-
-def logmsg(level,message):
-  # This function adds the Anvil session_id to the log message and logs the message to the log file with the specified log level
-  if level == "INFO":
-    logging.info("%s | %s",anvil.server.get_session_id(),message)
-  elif level == "ERROR":
-    logging.error("%s | %s",anvil.server.get_session_id(),message)
-  elif level == "DEBUG":
-    logging.debug("%s | %s",anvil.server.get_session_id(),message)
-  elif level == "WARNING":
-    logging.warning("%s | %s",anvil.server.get_session_id(),message)
-  elif level == "CRITICAL":
-    logging.critical("%s | %s",anvil.server.get_session_id(),message)
-  return
 
 #---------------------------------------------------------------------------------------#
 # The folling line has to be commented out / removed when deploying this as server code
