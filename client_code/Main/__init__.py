@@ -32,7 +32,7 @@ class Main(MainTemplate):
       alert("The server is offline")
       
     Global.rows_per_page = globals_from_config["rows_per_page"]
-    Global.version = globals_from_config["client_version"]
+    Global.version = globals_from_config["version"]
     Global.admin_domain = globals_from_config["admin_domain"]
     Global.admin_user = globals_from_config["admin_user"]
     Global.admin_user_initials = globals_from_config["admin_user_initials"]
